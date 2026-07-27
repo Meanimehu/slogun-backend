@@ -1,7 +1,9 @@
 import { Controller, Get, UseGuards, Req, NotFoundException } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse, ApiUnauthorizedResponse } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { AuthGuard } from '@nestjs/passport';
 
+@ApiTags('Users')
 @Controller('users')
 export class UsersController {
   
@@ -9,22 +11,20 @@ export class UsersController {
     console.log('✅ Users Controller is ready');
   }
 
-  // GET /api/users/profile
-  // Only logged-in users can access
   @Get('profile')
   @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get current user profile' })
+  @ApiResponse({ status: 200, description: 'Profile returned successfully' })
+  @ApiUnauthorizedResponse({ description: 'Login required' })
   async getProfile(@Req() req) {
-    console.log('👤 User requesting their profile');
-    
     const user = await this.usersService.findById(req.user.userId);
     
-    // Check if user exists
     if (!user) {
       throw new NotFoundException('User not found');
     }
     
     return {
-      success: true,
       data: {
         id: user._id,
         name: user.name,

@@ -1,73 +1,66 @@
-import { Controller, Get, Post, Body, UseGuards, Req, Redirect } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards, Req, Res } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
+
 import { AuthService } from './auth.service';
 import { Public } from './decorators/public.decorator';
+import type { Response } from 'express';
 
+@ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   
   constructor(
     private authService: AuthService,
     private configService: ConfigService,
-  ) {
-    console.log('✅ Auth Controller is ready');
-  }
+  ) {}
 
-  // Google Login
   @Public()
   @Get('google')
   @UseGuards(AuthGuard('google'))
-  async googleAuth() {
-    console.log('🔄 Redirecting to Google...');
-  }
+  @ApiOperation({ summary: 'Login with Google' })
+  async googleAuth() {}
 
-  // Google Callback
   @Public()
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
-  @Redirect()
-  async googleAuthRedirect(@Req() req) {
-    console.log('🔄 Google callback received!');
-    
+  @ApiOperation({ summary: 'Google OAuth callback' })
+  async googleAuthRedirect(@Req() req, @Res() res: Response) {
     try {
       const result = await this.authService.googleLogin(req.user);
       const frontendUrl = this.configService.get<string>('FRONTEND_URL');
       
-      return {
-        url: `${frontendUrl}/auth/callback?accessToken=${result.accessToken}&refreshToken=${result.refreshToken}`,
-        statusCode: 302,
-      };
+      // Use Express res.redirect with full URL
+      const redirectUrl = `${frontendUrl}/auth/callback?accessToken=${result.accessToken}&refreshToken=${result.refreshToken}`;
+      
+      return res.redirect(redirectUrl);
     } catch (error) {
       const frontendUrl = this.configService.get<string>('FRONTEND_URL');
-      return {
-        url: `${frontendUrl}/auth/error?message=Login failed`,
-        statusCode: 302,
-      };
+      return res.redirect(`${frontendUrl}/auth/error?message=Login failed`);
     }
   }
 
-  // Refresh Token
   @Public()
   @Post('refresh')
+  @ApiOperation({ summary: 'Refresh access token' })
   async refreshToken(@Body('refreshToken') refreshToken: string) {
     return this.authService.refreshAccessToken(refreshToken);
   }
 
-  // Logout
   @Post('logout')
   @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Logout' })
   async logout(@Body('refreshToken') refreshToken: string) {
     return this.authService.logout(refreshToken);
   }
 
-  // Get Profile
   @Get('profile')
   @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get current user profile' })
   async getProfile(@Req() req) {
-    return {
-      success: true,
-      user: req.user,
-    };
+    return { user: req.user };
   }
 }
