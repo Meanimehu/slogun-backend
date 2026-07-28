@@ -1,20 +1,19 @@
-import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { Document } from "mongoose";
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { Document } from 'mongoose';
 
 export type CategoryDocument = Category & Document;
 @Schema({
-    timestamps: true,
-    collection: 'categories'
+  timestamps: true,
+  collection: 'categories',
 })
-
 export class Category {
-    @Prop({required: true, unique: true,trim: true})
-    name: string;
+  @Prop({ required: true, unique: true, trim: true })
+  name: string;
 
-    @Prop({required: true, unique: true, lowercase: true,trim: true})
-    slug: string;
+  @Prop({ required: true, unique: true, lowercase: true, trim: true })
+  slug: string;
 
-     @Prop({ required: true, maxlength: 500 })
+  @Prop({ required: true, maxlength: 500 })
   description: string;
 
   @Prop({ default: '📢' })
@@ -31,11 +30,9 @@ export class Category {
 
   @Prop({ default: 0 })
   sloganCount: number;
-
-
 }
 
-export const CategorySchema = SchemaFactory.createForClass(Category)
+export const CategorySchema = SchemaFactory.createForClass(Category);
 
-CategorySchema.index({slug: 1})
-CategorySchema.index({isActive: 1})
+CategorySchema.index({ slug: 1 });
+CategorySchema.index({ isActive: 1 });

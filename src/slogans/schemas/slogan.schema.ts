@@ -8,8 +8,12 @@ export class Slogan {
   @Prop({ require: true, maxLength: 200 })
   text: string;
 
-  @Prop({ require: true, default: 'education-system-protest' })
-  category: string;
+  @Prop({
+    type: MongooseSchema.Types.ObjectId,
+    ref: 'Category',
+    required: true,
+  })
+  category: MongooseSchema.Types.ObjectId;
 
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
   author: MongooseSchema.Types.ObjectId;

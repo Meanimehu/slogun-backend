@@ -3,24 +3,41 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Slogan, SloganDocument } from './schemas/slogan.schema';
 import { Model } from 'mongoose';
 import { CreateSloganDto } from './dto/create-slogan.dto';
+import { CategoryDocument } from 'src/categories/schemas/category.schema';
+import { CategoriesService } from 'src/categories/categories.service';
 
 @Injectable()
 export class SlogansService {
   constructor(
     @InjectModel(Slogan.name) private sloganModel: Model<SloganDocument>,
+    private categoriesService: CategoriesService,
   ) {
     console.log('Slogans service is reday');
   }
 
   async create(createSloganDto: CreateSloganDto, userId: string) {
+    let category = await this.categoriesService.findById(
+      createSloganDto.category,
+    );
+
+    if (!category) {
+      throw new NotFoundException('Category not found');
+    }
+
     const slogan = new this.sloganModel({
-      text: createSloganDto.text,
+      text: createSloganDto.text.trim(),
       author: userId,
-      category: createSloganDto.category || 'education-system-protest',
+      category: category._id,
     });
 
     await slogan.save();
-    return slogan;
+    await this.categoriesService.incrementSloganCount(category._id.toString());
+
+    return this.sloganModel
+      .findById(slogan._id)
+      .populate('author', 'name avatar')
+      .populate('category', 'name icon color')
+      .exec();
   }
 
   async getTrending(page: number = 1, limit: number = 10) {
@@ -32,6 +49,7 @@ export class SlogansService {
         .skip(skip)
         .limit(limit)
         .populate('author', 'name avatar')
+        .populate('category', 'name icon color')
         .exec(),
 
       this.sloganModel.countDocuments({ isActive: true }),
@@ -54,6 +72,7 @@ export class SlogansService {
     const slogan = await this.sloganModel
       .findById(id)
       .populate('author', 'name avatar')
+      .populate('category', 'name icon color')
       .exec();
 
     if (!slogan) {
@@ -81,37 +100,42 @@ export class SlogansService {
     }
 
     slogan.trendingScore = this.calculateScore(slogan);
-    await slogan.save()
+    await slogan.save();
 
     return {
-        liked: !alreadyLiked,
-        likeCount: slogan.likeCount,
-    }
+      liked: !alreadyLiked,
+      likeCount: slogan.likeCount,
+    };
   }
 
   async getUserSlogans(userId: string) {
     const slogans = await this.sloganModel
       .find({ author: userId as any, isActive: true })
-      .sort({createdAt: -1})
+      .sort({ createdAt: -1 })
       .populate('author', 'name avatar')
+      .populate('category', 'name icon color')
       .exec();
-    
+
     return slogans;
   }
 
   async delete(sloganId: string, userId: string) {
     const slogan = await this.sloganModel.findOne({
-        _id: sloganId as any,
-        author: userId as any
-    })
+      _id: sloganId as any,
+      author: userId as any,
+    });
 
-    if(!slogan) {
-        throw new NotFoundException('slogans not found or unauthorized');
+    if (!slogan) {
+      throw new NotFoundException('slogans not found or unauthorized');
     }
 
     slogan.isActive = false;
     await slogan.save();
-    return {message: 'slogan deleted successfully'}
+
+    await this.categoriesService.decrementSloganCount(
+      slogan.category.toString(),
+    );
+    return { message: 'slogan deleted successfully' };
   }
 
   private calculateScore(slogan: SloganDocument): number {

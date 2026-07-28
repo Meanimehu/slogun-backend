@@ -1,8 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, MinLength, MaxLength, IsOptional } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  MinLength,
+  MaxLength,
+  IsOptional,
+  IsMongoId,
+} from 'class-validator';
 
 export class CreateSloganDto {
-  
   @ApiProperty({
     description: 'The slogan text',
     example: 'Education is a right, not a privilege!',
@@ -15,12 +21,12 @@ export class CreateSloganDto {
   @MaxLength(200, { message: 'Slogan must be less than 200 characters' })
   text: string;
 
-  @ApiPropertyOptional({
-    description: 'Category slug',
-    example: 'education-system-protest',
-    default: 'education-system-protest',
+  @ApiProperty({
+    description: 'Category ID (MongoDB ObjectId)',
+    example: '64a1b2c3d4e5f6a7b8c9d0e1',
   })
-  @IsOptional()
   @IsString()
-  category?: string;
+  @IsNotEmpty({ message: 'Category is required' })
+  @IsMongoId({ message: 'Invalid category ID' })
+  category: string;
 }
